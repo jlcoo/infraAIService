@@ -6,6 +6,8 @@ import copy
 import urllib.request
 import re
 import tempfile
+import uuid
+
 from loguru import logger
 from infra_ai_service.config.config import settings
 from infra_ai_service.service.extract_xml import extract_xml_features
@@ -359,18 +361,22 @@ def extract_spec_features(dir_path: str):
     return data
 
 
-# 新增以下函数以支持 deb 处理
-
 def process_src_deb_from_url(url: str):
     if not url.endswith(".dsc"):
         raise Exception("URL of .dsc may be wrong")
 
-    file_save_dir = os.path.expanduser(settings.SRC_DEB_DIR)
-    if not os.path.exists(file_save_dir):
-        os.makedirs(file_save_dir)
+    file_save_all_dir = os.path.expanduser(settings.SRC_DEB_DIR)
+    if not os.path.exists(file_save_all_dir):
+        os.makedirs(file_save_all_dir)
 
     # download the .dsc file
+    time_based_uuid = uuid.uuid1()
+    file_save_dir = os.path.join(file_save_all_dir, time_based_uuid.__str__())
+    if os.path.exists(file_save_dir):
+        os.unlink(file_save_dir)
+    os.makedirs(file_save_dir)
     dsc_path = os.path.join(file_save_dir, "tmp.dsc")
+
     _download_from_url(url, dsc_path)
 
     # Use 'dget' to download and extract the source package
@@ -389,7 +395,8 @@ def process_src_deb_from_url(url: str):
 
     import re
     source_match = re.search(r'^Source:\s*(.*)$', dsc_content, re.MULTILINE)
-    version_match = re.search(r'^Version:\s*(.*)$', dsc_content, re.MULTILINE)
+    version_match = re.search(r'^Version:\s*(.*)-.*$', dsc_content,
+                              re.MULTILINE)
     if not source_match or not version_match:
         raise Exception("Failed to parse Source or Version from .dsc file")
     source_name = source_match.group(1)
@@ -400,14 +407,13 @@ def process_src_deb_from_url(url: str):
         source_dir = os.path.join(file_save_dir, f"{source_name}_{version}")
         if not os.path.exists(source_dir):
             raise Exception(f"Source directory not found: {source_dir}")
-    return source_dir
+    return file_save_dir
 
 
 def extract_dsc_features(dir_path: str):
     if not os.path.exists(dir_path):
         raise Exception("Source directory does not exist")
 
-    data = {}
     # Find the .dsc file in the dir_path
     dsc_file = None
     for file in os.listdir(dir_path):
