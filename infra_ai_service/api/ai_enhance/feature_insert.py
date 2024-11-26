@@ -36,7 +36,6 @@ class FeatureInsertXml(BaseModel):
 @router.post("/")
 async def feature_insert(request: FeatureInsertRequest = Body(...)):
     try:
-        request.src_deb_url = "http://archive.ubuntu.com/ubuntu/pool/universe/b/bdbvu/bdbvu_0.1-2build1.dsc"
         if request.src_rpm_url:
             if not es.XML_INFO:
                 raise Exception(
