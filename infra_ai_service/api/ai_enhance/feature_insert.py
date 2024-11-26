@@ -38,6 +38,15 @@ async def feature_insert(request: FeatureInsertRequest = Body(...)):
     try:
         request.src_deb_url = "http://archive.ubuntu.com/ubuntu/pool/universe/b/bdbvu/bdbvu_0.1-2build1.dsc"
         if request.src_rpm_url:
+            if not es.XML_INFO:
+                raise Exception(
+                    "need config xml with API '/feature-insert/xml/'")
+
+            xml_version = es.XML_INFO.get("os_version", "%v!@#")  # foolproof
+            if xml_version != request.os_version:
+                raise Exception(
+                    "xml os version conflict, please config xml again,"
+                    f"{xml_version}:{request.os_version}")
             # process .src.rpm file
             rpm_decompress_dir = process_src_rpm_from_url(request.src_rpm_url)
             logger.info(
